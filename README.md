@@ -3,11 +3,6 @@
 
 <div align="center">
   <img src="screenshot.png" alt="A screenshot of the application"/>
-  <p>
-  <sub>
-  (NOTE: I'm using WezTerm with the "Gruvbox Dark (Gogh)" theme. Yours may look slightly different)
-  </sub>
-  </p>
 </div>
 
 <br>

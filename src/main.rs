@@ -230,21 +230,60 @@ fn render_temperature_scatterplot(frame: &mut Frame, area: Rect, hourly: &Vec<Op
 }
 
 
-fn render_fortnight_scatterplot(frame: &mut Frame, area: Rect, hourly: &Vec<OpenMeteoHourly>) {
-    let mut fortnight_hourly: [(f64, f64); 336] = [(0., 0.); 336];
+fn render_fortnight_scatterplot(
+    frame: &mut Frame,
+    area: Rect,
+    hourly: &Vec<OpenMeteoHourly>,
+    daily: &Vec<OpenMeteoPeriod>,
+) {
+    const DATA_LENGTH: usize = 336;
+    // let mut fortnight_hourly: [(f64, f64); DATA_LENGTH] = [(0., 0.); DATA_LENGTH];
+    // let mut count: usize = 0;
+    // for i in hourly {
+    //     // let time_split = i.datetime.split("T");
+    //     // let time_pieces = time_split.collect::<Vec<_>>();
+    //     // let hour_split = time_pieces[1].split(":");
+    //     // let hour_pieces = hour_split.collect::<Vec<_>>();
+    //     // let hour_as_float = hour_pieces[0].parse::<f64>().unwrap();
+    //     let mut temp_clone = i.temperature.clone();
+    //     temp_clone.pop();
+    //     let temp_as_float = temp_clone.parse::<f64>().unwrap();
+    //     fortnight_hourly[count] = (0., temp_as_float);
+    //     count += 1;
+    // }
+
+    let mut fortnight_hourly: [(f64, f64); DATA_LENGTH] = [(0., 0.); DATA_LENGTH];
     let mut count: usize = 0;
     for i in hourly {
-        let time_split = i.datetime.split("T");
-        let time_pieces = time_split.collect::<Vec<_>>();
-        let hour_split = time_pieces[1].split(":");
-        let hour_pieces = hour_split.collect::<Vec<_>>();
-        let hour_as_float = hour_pieces[0].parse::<f64>().unwrap();
         let mut temp_clone = i.temperature.clone();
         temp_clone.pop();
         let temp_as_float = temp_clone.parse::<f64>().unwrap();
-        fortnight_hourly[count] = (hour_as_float, temp_as_float);
+        // Scale the x-coordinate to fit within 0..336 for 14 days of hourly data
+        let x_position = count as f64;
+        fortnight_hourly[count] = (x_position, temp_as_float);
         count += 1;
     }
+
+
+    let days: Vec<String> = daily
+    .iter()
+    .map(|l| {
+        let parts: Vec<&str> = l.date.split('-').collect();
+        if parts.len() == 3 {
+            format!("{}-{}", parts[1], parts[2])  // MM-DD
+        } else {
+            l.date.clone() // fallback in case the format is unexpected
+        }
+    })
+    .collect();
+
+    let x_labels: Vec<Line> = (0..14)  // 14 days in total
+        .map(|i| {
+            let day = &days[i];
+            Line::from(day.as_str())
+        })
+        .collect();
+
 
     let temps: Vec<f64> = fortnight_hourly.iter().map(|(_, temp)| *temp).collect();
     let min_temp = temps.iter().cloned().fold(f64::INFINITY, f64::min);
@@ -273,13 +312,12 @@ fn render_fortnight_scatterplot(frame: &mut Frame, area: Rect, hourly: &Vec<Open
                 .style(Style::default().fg(Color::Gray))
                 .labels(y_labels),
         )
-        // Tage als Label
         .x_axis(
             Axis::default()
-                .title("Time (HH:MM)")
-                .bounds([0., 23.])
+                .title("Days")
+                .bounds([0., DATA_LENGTH as f64])
                 .style(Style::default().fg(Color::Gray))
-                .labels(["00:00", "06:00", "12:00", "18:00", "23:00"]),
+                .labels(x_labels)
         )
         .hidden_legend_constraints((Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)));
 
@@ -452,7 +490,7 @@ impl App {
         //                 .padding(Padding::uniform(1))
         //         ), description
         //     );
-        render_fortnight_scatterplot(frame, fortnight_graph, &self.open_meteo_forecast.hourly);
+        render_fortnight_scatterplot(frame, fortnight_graph, &self.open_meteo_forecast.hourly, &self.open_meteo_forecast.periods);
 
         // Render forecast summary details for right now
         frame.render_widget(create_right_now_table(&self.open_meteo_forecast), quick_stats);
